@@ -11,10 +11,18 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:scaleType="centerCrop"
-        android:src="@drawable/background_header"
+        android:src="@drawable/background_header_wave"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         tools:ignore="ContentDescription" />
+
+    <Button
+        android:id="@+id/drawer_header_action_button"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:background="?selectableItemBackground"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -31,33 +39,38 @@
             android:layout_height="72dp"
             android:layout_marginLeft="16dp"
             android:layout_marginRight="16dp"
-            android:gravity="center"
-            android:orientation="horizontal"
+            android:gravity="start|center_vertical"
+            android:orientation="vertical"
             tools:ignore="UseCompoundDrawables">
-
-            <ImageView
-                android:layout_width="@dimen/drawer_header_newpipe_icon_size"
-                android:layout_height="@dimen/drawer_header_newpipe_icon_size"
-                android:layout_marginEnd="@dimen/drawer_header_newpipe_icon_title_space"
-                android:src="@drawable/splash_foreground"
-                tools:ignore="ContentDescription" />
 
             <org.schabi.newpipe.views.NewPipeTextView
                 android:id="@+id/drawer_header_newpipe_title"
-                android:layout_width="@dimen/drawer_header_newpipe_title_default_width"
-                android:layout_height="match_parent"
-                android:layout_marginEnd="@dimen/drawer_header_newpipe_icon_title_space"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
                 android:ellipsize="end"
                 android:gravity="start|center_vertical"
-                android:hyphenationFrequency="full"
+                android:hyphenationFrequency="none"
                 android:maxLines="1"
                 android:text="@string/app_name"
                 android:textColor="@color/drawer_header_font_color"
                 android:textStyle="bold"
-                app:autoSizeMaxTextSize="@dimen/drawer_header_newpipe_title_max_text_size"
-                app:autoSizeMinTextSize="@dimen/drawer_header_newpipe_title_min_text_size"
+                app:autoSizeMaxTextSize="30sp"
+                app:autoSizeMinTextSize="16sp"
                 app:autoSizeTextType="uniform"
                 tools:ignore="UnusedAttribute" />
+
+            <org.schabi.newpipe.views.NewPipeTextView
+                android:id="@+id/drawer_header_credit"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:alpha="0.9"
+                android:autoLink="web"
+                android:linksClickable="true"
+                android:maxLines="1"
+                android:text="@string/wavetube_credit"
+                android:textColor="@color/drawer_header_font_color"
+                android:textColorLink="@color/drawer_header_font_color"
+                android:textSize="11sp" />
         </LinearLayout>
 
         <LinearLayout
@@ -109,12 +122,4 @@
                 tools:ignore="ContentDescription" />
         </LinearLayout>
     </LinearLayout>
-
-    <Button
-        android:id="@+id/drawer_header_action_button"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:background="?selectableItemBackground"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
 </androidx.constraintlayout.widget.ConstraintLayout>
