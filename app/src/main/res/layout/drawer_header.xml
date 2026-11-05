@@ -21,6 +21,8 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:background="?selectableItemBackground"
+        android:elevation="0dp"
+        android:stateListAnimator="@null"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -29,6 +31,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/drawer_header_padding_top"
         android:fitsSystemWindows="true"
+        android:elevation="8dp"
         android:gravity="bottom"
         android:minHeight="@dimen/drawer_header_content_min_height"
         android:orientation="vertical"
