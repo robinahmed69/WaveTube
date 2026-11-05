@@ -59,18 +59,14 @@
                 app:autoSizeTextType="uniform"
                 tools:ignore="UnusedAttribute" />
 
-            <org.schabi.newpipe.views.NewPipeTextView
+            <org.schabi.newpipe.views.CreditTextView
                 android:id="@+id/drawer_header_credit"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:alpha="0.9"
-                android:autoLink="web"
-                android:linksClickable="true"
                 android:maxLines="1"
-                android:text="@string/wavetube_credit"
                 android:textColor="@color/drawer_header_font_color"
-                android:textColorLink="@color/drawer_header_font_color"
-                android:textSize="11sp" />
+                android:textSize="12sp" />
         </LinearLayout>
 
         <LinearLayout
