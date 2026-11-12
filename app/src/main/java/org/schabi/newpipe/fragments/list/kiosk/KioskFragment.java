@@ -29,7 +29,6 @@ import org.schabi.newpipe.extractor.ServiceList;
 import org.schabi.newpipe.extractor.StreamingService;
 import org.schabi.newpipe.extractor.exceptions.ExtractionException;
 import org.schabi.newpipe.extractor.kiosk.KioskInfo;
-import org.schabi.newpipe.extractor.linkhandler.ListLinkHandler;
 import org.schabi.newpipe.extractor.linkhandler.ListLinkHandlerFactory;
 import org.schabi.newpipe.extractor.localization.ContentCountry;
 import org.schabi.newpipe.extractor.services.media_ccc.extractors.MediaCCCLiveStreamKiosk;
@@ -41,7 +40,6 @@ import org.schabi.newpipe.util.ExtractorHelper;
 import org.schabi.newpipe.util.KioskTranslator;
 import org.schabi.newpipe.util.Localization;
 
-import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -94,7 +92,7 @@ public class KioskFragment extends BaseListInfoFragment<StreamInfoItem, KioskInf
     public void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        kioskTranslatedName = isYouTube()
+        kioskTranslatedName = isForYou()
                 ? FOR_YOU_TITLE
                 : KioskTranslator.getTranslatedKioskName(kioskId, activity);
         name = kioskTranslatedName;
@@ -145,21 +143,50 @@ public class KioskFragment extends BaseListInfoFragment<StreamInfoItem, KioskInf
         return serviceId == ServiceList.YouTube.getServiceId();
     }
 
+    /**
+     * Only the default YouTube kiosk is replaced by the "For You" feed.
+     * All other kiosks (live, music, gaming, ...) keep working as usual.
+     */
+    private boolean isForYou() {
+        if (!isYouTube()) {
+            return false;
+        }
+        try {
+            return kioskId.equals(NewPipe.getService(serviceId)
+                    .getKioskList().getDefaultKioskId());
+        } catch (final ExtractionException e) {
+            return false;
+        }
+    }
+
     @Override
     public Single<KioskInfo> loadResult(final boolean forceReload) {
         contentCountry = Localization.getPreferredContentCountry(requireContext());
-        if (!isYouTube()) {
-            return ExtractorHelper.getKioskInfo(serviceId, url, forceReload);
+        final Single<KioskInfo> kioskInfo =
+                ExtractorHelper.getKioskInfo(serviceId, url, forceReload);
+        if (!isForYou()) {
+            return kioskInfo;
         }
-        return loadForYou();
+
+        final HistoryRecordManager historyManager = new HistoryRecordManager(requireContext());
+        return kioskInfo.flatMap(info -> loadForYouItems(historyManager)
+                .map(items -> {
+                    // keep the normal kiosk items if there is no history yet
+                    if (!items.isEmpty()) {
+                        info.setRelatedItems(items);
+                        info.setNextPage(null);
+                    }
+                    return info;
+                }));
     }
 
     /**
      * "For You" feed: related videos of the last watched videos,
      * without already watched ones and duplicates.
      */
-    private Single<KioskInfo> loadForYou() {
-        return new HistoryRecordManager(requireContext()).getStreamHistorySortedById()
+    private Single<List<StreamInfoItem>> loadForYouItems(
+            final HistoryRecordManager historyManager) {
+        return historyManager.getStreamHistorySortedById()
                 .firstOrError()
                 .flatMap(history -> {
                     final Set<String> watched = new HashSet<>();
@@ -194,24 +221,15 @@ public class KioskFragment extends BaseListInfoFragment<StreamInfoItem, KioskInf
                                     }
                                 }
                                 Collections.shuffle(items);
-
-                                final Constructor<KioskInfo> c = KioskInfo.class
-                                        .getDeclaredConstructor(int.class,
-                                                ListLinkHandler.class, String.class);
-                                c.setAccessible(true);
-                                final KioskInfo info = c.newInstance(serviceId,
-                                        new ListLinkHandler(url, url, kioskId,
-                                                Collections.emptyList(), ""),
-                                        FOR_YOU_TITLE);
-                                info.setRelatedItems(items);
-                                return info;
+                                return items;
                             });
-                });
+                })
+                .onErrorReturnItem(Collections.<StreamInfoItem>emptyList());
     }
 
     @Override
     public Single<ListExtractor.InfoItemsPage<StreamInfoItem>> loadMoreItemsLogic() {
-        if (isYouTube()) {
+        if (isForYou()) {
             // For You feed has a single page
             return Single.just(ListExtractor.InfoItemsPage.emptyPage());
         }
@@ -239,4 +257,4 @@ public class KioskFragment extends BaseListInfoFragment<StreamInfoItem, KioskInf
             setEmptyStateMessage(R.string.no_live_streams);
         }
     }
-                            }
+            }
