@@ -41,6 +41,7 @@ import org.schabi.newpipe.util.ExtractorHelper;
 import org.schabi.newpipe.util.KioskTranslator;
 import org.schabi.newpipe.util.Localization;
 
+import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -158,7 +159,7 @@ public class KioskFragment extends BaseListInfoFragment<StreamInfoItem, KioskInf
      * without already watched ones and duplicates.
      */
     private Single<KioskInfo> loadForYou() {
-        return new HistoryRecordManager(requireContext()).getStreamHistory()
+        return new HistoryRecordManager(requireContext()).getStreamHistorySortedById()
                 .firstOrError()
                 .flatMap(history -> {
                     final Set<String> watched = new HashSet<>();
@@ -166,11 +167,11 @@ public class KioskFragment extends BaseListInfoFragment<StreamInfoItem, KioskInf
                         watched.add(e.getStreamEntity().getUrl());
                     }
 
-                    // history is ordered oldest -> newest, so take the tail
-                    final int from = Math.max(0, history.size() - HISTORY_SAMPLE_SIZE);
-                    final List<StreamHistoryEntry> last =
-                            new ArrayList<>(history.subList(from, history.size()));
-                    Collections.reverse(last);
+                    final List<StreamHistoryEntry> sorted = new ArrayList<>(history);
+                    Collections.sort(sorted,
+                            (a, b) -> b.getAccessDate().compareTo(a.getAccessDate()));
+                    final List<StreamHistoryEntry> last = new ArrayList<>(
+                            sorted.subList(0, Math.min(HISTORY_SAMPLE_SIZE, sorted.size())));
 
                     return Observable.fromIterable(last)
                             .flatMapMaybe(e -> ExtractorHelper
@@ -194,7 +195,11 @@ public class KioskFragment extends BaseListInfoFragment<StreamInfoItem, KioskInf
                                 }
                                 Collections.shuffle(items);
 
-                                final KioskInfo info = new KioskInfo(serviceId,
+                                final Constructor<KioskInfo> c = KioskInfo.class
+                                        .getDeclaredConstructor(int.class,
+                                                ListLinkHandler.class, String.class);
+                                c.setAccessible(true);
+                                final KioskInfo info = c.newInstance(serviceId,
                                         new ListLinkHandler(url, url, kioskId,
                                                 Collections.emptyList(), ""),
                                         FOR_YOU_TITLE);
@@ -234,4 +239,4 @@ public class KioskFragment extends BaseListInfoFragment<StreamInfoItem, KioskInf
             setEmptyStateMessage(R.string.no_live_streams);
         }
     }
-}
+                            }
