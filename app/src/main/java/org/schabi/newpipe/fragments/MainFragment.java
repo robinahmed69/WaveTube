@@ -1,16 +1,7 @@
 package org.schabi.newpipe.fragments;
 
-import static android.widget.RelativeLayout.ABOVE;
-import static android.widget.RelativeLayout.ALIGN_PARENT_BOTTOM;
-import static android.widget.RelativeLayout.ALIGN_PARENT_TOP;
-import static android.widget.RelativeLayout.BELOW;
-import static com.google.android.material.tabs.TabLayout.INDICATOR_GRAVITY_BOTTOM;
-import static com.google.android.material.tabs.TabLayout.INDICATOR_GRAVITY_TOP;
-
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.content.res.ColorStateList;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -21,16 +12,17 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.RelativeLayout;
 
-import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
+import androidx.core.view.GravityCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentStatePagerAdapterMenuWorkaround;
 import androidx.preference.PreferenceManager;
-import androidx.viewpager.widget.ViewPager;
 
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.tabs.TabLayout;
 
 import org.schabi.newpipe.BaseFragment;
@@ -44,8 +36,6 @@ import org.schabi.newpipe.settings.tabs.Tab;
 import org.schabi.newpipe.settings.tabs.TabsManager;
 import org.schabi.newpipe.util.NavigationHelper;
 import org.schabi.newpipe.util.ServiceHelper;
-import org.schabi.newpipe.util.ThemeHelper;
-import org.schabi.newpipe.views.ScrollableTabLayout;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -62,8 +52,14 @@ public class MainFragment extends BaseFragment implements TabLayout.OnTabSelecte
     private SharedPreferences prefs;
     private boolean youtubeRestrictedModeEnabled;
     private String youtubeRestrictedModeEnabledKey;
-    private boolean mainTabsPositionBottom;
-    private String mainTabsPositionKey;
+
+    // top red bar (toolbar) hiding
+    private boolean toolbarHidden = false;
+    private int savedTopMargin = 0;
+
+    // keeps the pill bar above the mini player
+    private BottomSheetBehavior<View> sheetBehavior;
+    private BottomSheetBehavior.BottomSheetCallback sheetCallback;
 
     /*//////////////////////////////////////////////////////////////////////////
     // Fragment's LifeCycle
@@ -89,8 +85,6 @@ public class MainFragment extends BaseFragment implements TabLayout.OnTabSelecte
         prefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
         youtubeRestrictedModeEnabledKey = getString(R.string.youtube_restricted_mode_enabled);
         youtubeRestrictedModeEnabled = prefs.getBoolean(youtubeRestrictedModeEnabledKey, false);
-        mainTabsPositionKey = getString(R.string.main_tabs_position_key);
-        mainTabsPositionBottom = prefs.getBoolean(mainTabsPositionKey, false);
     }
 
     @Override
@@ -109,8 +103,10 @@ public class MainFragment extends BaseFragment implements TabLayout.OnTabSelecte
         binding.mainTabLayout.setupWithViewPager(binding.pager);
         binding.mainTabLayout.addOnTabSelectedListener(this);
 
+        binding.mainMenuButton.setOnClickListener(v -> openDrawer());
+        binding.mainSearchButton.setOnClickListener(v -> openSearch());
+
         setupTabs();
-        updateTabLayoutPosition();
     }
 
     @Override
@@ -124,11 +120,15 @@ public class MainFragment extends BaseFragment implements TabLayout.OnTabSelecte
             setupTabs();
         }
 
-        final boolean newMainTabsPosition = prefs.getBoolean(mainTabsPositionKey, false);
-        if (mainTabsPositionBottom != newMainTabsPosition) {
-            mainTabsPositionBottom = newMainTabsPosition;
-            updateTabLayoutPosition();
-        }
+        hideToolbar();
+        attachSheetCallback();
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        detachSheetCallback();
+        showToolbar();
     }
 
     @Override
@@ -145,6 +145,126 @@ public class MainFragment extends BaseFragment implements TabLayout.OnTabSelecte
     public void onDestroyView() {
         super.onDestroyView();
         binding = null;
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////
+    // Toolbar (top red bar) and pill bar helpers
+    //////////////////////////////////////////////////////////////////////////*/
+
+    /**
+     * Hides the red toolbar so the content can use the full screen.
+     * The status bar keeps its color from the theme.
+     */
+    private void hideToolbar() {
+        final ActionBar actionBar = activity.getSupportActionBar();
+        if (actionBar != null) {
+            actionBar.hide();
+        }
+        final View holder = activity.findViewById(R.id.fragment_holder);
+        if (holder != null && holder.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
+            final ViewGroup.MarginLayoutParams lp =
+                    (ViewGroup.MarginLayoutParams) holder.getLayoutParams();
+            if (!toolbarHidden) {
+                savedTopMargin = lp.topMargin;
+            }
+            lp.topMargin = 0;
+            holder.setLayoutParams(lp);
+        }
+        toolbarHidden = true;
+    }
+
+    /**
+     * Brings the toolbar back, because all other screens (search, video, channel...) need it.
+     */
+    private void showToolbar() {
+        if (!toolbarHidden) {
+            return;
+        }
+        final View holder = activity.findViewById(R.id.fragment_holder);
+        if (holder != null && holder.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
+            final ViewGroup.MarginLayoutParams lp =
+                    (ViewGroup.MarginLayoutParams) holder.getLayoutParams();
+            lp.topMargin = savedTopMargin;
+            holder.setLayoutParams(lp);
+        }
+        final ActionBar actionBar = activity.getSupportActionBar();
+        if (actionBar != null) {
+            actionBar.show();
+        }
+        toolbarHidden = false;
+    }
+
+    private void openDrawer() {
+        final View drawer = activity.findViewById(R.id.drawer_layout);
+        if (drawer != null && drawer.getParent() instanceof DrawerLayout) {
+            ((DrawerLayout) drawer.getParent()).openDrawer(GravityCompat.START);
+        }
+    }
+
+    private void openSearch() {
+        try {
+            NavigationHelper.openSearchFragment(getFM(),
+                    ServiceHelper.getSelectedServiceId(activity), "");
+        } catch (final Exception e) {
+            ErrorUtil.showUiErrorSnackbar(this, "Opening search fragment", e);
+        }
+    }
+
+    private void attachSheetCallback() {
+        final View sheet = activity.findViewById(R.id.fragment_player_holder);
+        if (sheet == null) {
+            return;
+        }
+        try {
+            sheetBehavior = BottomSheetBehavior.from(sheet);
+        } catch (final IllegalArgumentException e) {
+            sheetBehavior = null;
+            return;
+        }
+        sheetCallback = new BottomSheetBehavior.BottomSheetCallback() {
+            @Override
+            public void onStateChanged(@NonNull final View bottomSheet, final int newState) {
+                updatePillMargin();
+            }
+
+            @Override
+            public void onSlide(@NonNull final View bottomSheet, final float slideOffset) {
+                // not needed
+            }
+        };
+        sheetBehavior.addBottomSheetCallback(sheetCallback);
+        updatePillMargin();
+    }
+
+    private void detachSheetCallback() {
+        if (sheetBehavior != null && sheetCallback != null) {
+            sheetBehavior.removeBottomSheetCallback(sheetCallback);
+        }
+        sheetCallback = null;
+        sheetBehavior = null;
+    }
+
+    /**
+     * Lifts the pill bar above the mini player when the mini player is visible.
+     */
+    private void updatePillMargin() {
+        if (binding == null || sheetBehavior == null) {
+            return;
+        }
+        final int state = sheetBehavior.getState();
+        final int lift;
+        if (state == BottomSheetBehavior.STATE_COLLAPSED) {
+            lift = Math.max(sheetBehavior.getPeekHeight(), 0);
+        } else if (state == BottomSheetBehavior.STATE_HIDDEN) {
+            lift = 0;
+        } else {
+            return;
+        }
+        final int base = Math.round(16 * getResources().getDisplayMetrics().density);
+        final RelativeLayout.LayoutParams lp =
+                (RelativeLayout.LayoutParams) binding.mainPillBar.getLayoutParams();
+        lp.bottomMargin = base + lift;
+        binding.mainPillBar.setLayoutParams(lp);
     }
 
     /*//////////////////////////////////////////////////////////////////////////
@@ -170,12 +290,7 @@ public class MainFragment extends BaseFragment implements TabLayout.OnTabSelecte
     @Override
     public boolean onOptionsItemSelected(final MenuItem item) {
         if (item.getItemId() == R.id.action_search) {
-            try {
-                NavigationHelper.openSearchFragment(getFM(),
-                        ServiceHelper.getSelectedServiceId(activity), "");
-            } catch (final Exception e) {
-                ErrorUtil.showUiErrorSnackbar(this, "Opening search fragment", e);
-            }
+            openSearch();
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -222,38 +337,6 @@ public class MainFragment extends BaseFragment implements TabLayout.OnTabSelecte
         pagerAdapter.getLocalPlaylistFragments()
                 .stream()
                 .forEach(LocalPlaylistFragment::saveImmediate);
-    }
-
-    private void updateTabLayoutPosition() {
-        final ScrollableTabLayout tabLayout = binding.mainTabLayout;
-        final ViewPager viewPager = binding.pager;
-        final boolean bottom = mainTabsPositionBottom;
-
-        // change layout params to make the tab layout appear either at the top or at the bottom
-        final var tabParams = (RelativeLayout.LayoutParams) tabLayout.getLayoutParams();
-        final var pagerParams = (RelativeLayout.LayoutParams) viewPager.getLayoutParams();
-
-        tabParams.removeRule(bottom ? ALIGN_PARENT_TOP : ALIGN_PARENT_BOTTOM);
-        tabParams.addRule(bottom ? ALIGN_PARENT_BOTTOM : ALIGN_PARENT_TOP);
-        pagerParams.removeRule(bottom ? BELOW : ABOVE);
-        pagerParams.addRule(bottom ? ABOVE : BELOW, R.id.main_tab_layout);
-        tabLayout.setSelectedTabIndicatorGravity(
-                bottom ? INDICATOR_GRAVITY_TOP : INDICATOR_GRAVITY_BOTTOM);
-
-        tabLayout.setLayoutParams(tabParams);
-        viewPager.setLayoutParams(pagerParams);
-
-        // change the background and icon color of the tab layout:
-        // service-colored at the top, app-background-colored at the bottom
-        tabLayout.setBackgroundColor(ThemeHelper.resolveColorFromAttr(requireContext(),
-                bottom ? android.R.attr.windowBackground : R.attr.colorPrimary));
-
-        @ColorInt final int iconColor = bottom
-                ? ThemeHelper.resolveColorFromAttr(requireContext(), android.R.attr.colorAccent)
-                : Color.WHITE;
-        tabLayout.setTabRippleColor(ColorStateList.valueOf(iconColor).withAlpha(32));
-        tabLayout.setTabIconTint(ColorStateList.valueOf(iconColor));
-        tabLayout.setSelectedTabIndicatorColor(iconColor);
     }
 
     @Override
