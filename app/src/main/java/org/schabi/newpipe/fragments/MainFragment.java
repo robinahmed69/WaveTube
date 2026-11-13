@@ -11,7 +11,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
-import android.widget.RelativeLayout;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -225,16 +224,19 @@ public class MainFragment extends BaseFragment implements TabLayout.OnTabSelecte
         sheetCallback = new BottomSheetBehavior.BottomSheetCallback() {
             @Override
             public void onStateChanged(@NonNull final View bottomSheet, final int newState) {
-                updatePillMargin();
+                updatePillPosition();
             }
 
             @Override
             public void onSlide(@NonNull final View bottomSheet, final float slideOffset) {
-                // not needed
+                updatePillPosition();
             }
         };
         sheetBehavior.addBottomSheetCallback(sheetCallback);
-        updatePillMargin();
+        updatePillPosition();
+        if (binding != null) {
+            binding.mainPillBar.post(this::updatePillPosition);
+        }
     }
 
     private void detachSheetCallback() {
@@ -246,26 +248,25 @@ public class MainFragment extends BaseFragment implements TabLayout.OnTabSelecte
     }
 
     /**
-     * Lifts the pill bar above the mini player when the mini player is visible.
+     * Keeps the pill bar just above the player: it follows the mini player while the
+     * video is swiped down or up, and returns to the bottom when the player is closed.
      */
-    private void updatePillMargin() {
+    private void updatePillPosition() {
         if (binding == null || sheetBehavior == null) {
             return;
         }
-        final int state = sheetBehavior.getState();
-        final int lift;
-        if (state == BottomSheetBehavior.STATE_COLLAPSED) {
-            lift = Math.max(sheetBehavior.getPeekHeight(), 0);
-        } else if (state == BottomSheetBehavior.STATE_HIDDEN) {
-            lift = 0;
-        } else {
+        final View sheet = activity.findViewById(R.id.fragment_player_holder);
+        final View holder = activity.findViewById(R.id.fragment_holder);
+        if (sheet == null || holder == null) {
             return;
         }
-        final int base = Math.round(16 * getResources().getDisplayMetrics().density);
-        final RelativeLayout.LayoutParams lp =
-                (RelativeLayout.LayoutParams) binding.mainPillBar.getLayoutParams();
-        lp.bottomMargin = base + lift;
-        binding.mainPillBar.setLayoutParams(lp);
+        if (sheetBehavior.getState() == BottomSheetBehavior.STATE_HIDDEN
+                || sheet.getHeight() == 0) {
+            binding.mainPillBar.setTranslationY(0f);
+            return;
+        }
+        final float overlap = Math.max(0, holder.getBottom() - sheet.getTop());
+        binding.mainPillBar.setTranslationY(-overlap);
     }
 
     /*//////////////////////////////////////////////////////////////////////////
@@ -451,4 +452,4 @@ public class MainFragment extends BaseFragment implements TabLayout.OnTabSelecte
             return internalTabsList.equals(tabsToCompare);
         }
     }
-}
+                                                }
