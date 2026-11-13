@@ -15,6 +15,10 @@ object ImageStrategy {
     private const val BEST_LOW_H = 75
     private const val BEST_MEDIUM_H = 250
 
+    // WaveTube: matches YouTube video thumbnails (i.ytimg.com/vi/ID/xxx.jpg, vi_webp too)
+    private val YT_THUMB_REGEX =
+        Regex("""^https://i\.ytimg\.com/vi(?:_webp)?/([A-Za-z0-9_-]{11})/[^/?]+""")
+
     private var preferredImageQuality = PreferredImageQuality.MEDIUM
 
     @JvmStatic
@@ -25,6 +29,20 @@ object ImageStrategy {
     @JvmStatic
     fun shouldLoadImages(): Boolean {
         return preferredImageQuality != PreferredImageQuality.NONE
+    }
+
+    /**
+     * WaveTube: YouTube lists only give small thumbnails (about 336x188), so ask for the
+     * 1280x720 version instead. If some thumbnails turn out blank, change "hq720.jpg" to
+     * "hqdefault.jpg" (always exists, 480x360).
+     */
+    @JvmStatic
+    fun upgradeYoutubeThumbnail(url: String?): String? {
+        if (url == null) return null
+        // leave live thumbnails (..._live.jpg) untouched
+        if (url.contains("_live")) return url
+        val match = YT_THUMB_REGEX.find(url) ?: return url
+        return "https://i.ytimg.com/vi/${match.groupValues[1]}/hq720.jpg"
     }
 
     @JvmStatic
@@ -112,7 +130,7 @@ object ImageStrategy {
         return images.stream() // using "min" basically means "take the first group, then take the first subgroup,
             // then choose the best image, while ignoring all other groups and subgroups"
             .min(finalComparator)
-            .map(Image::getUrl)
+            .map { image -> upgradeYoutubeThumbnail(image.url) }
             .orElse(null)
     }
 
