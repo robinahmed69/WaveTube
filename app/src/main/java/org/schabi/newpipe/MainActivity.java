@@ -27,6 +27,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -109,6 +110,12 @@ public class MainActivity extends AppCompatActivity {
     @SuppressWarnings("ConstantConditions")
     public static final boolean DEBUG = !BuildConfig.BUILD_TYPE.equals("release");
 
+    /**
+     * Text size multiplier for the whole app.
+     * 1.0f = normal, 0.88f = 12% smaller, 0.8f = 20% smaller.
+     */
+    private static final float APP_FONT_SCALE = 0.88f;
+
     private ActivityMainBinding mainBinding;
     private DrawerHeaderBinding drawerHeaderBinding;
     private DrawerLayoutBinding drawerLayoutBinding;
@@ -137,6 +144,15 @@ public class MainActivity extends AppCompatActivity {
     /*//////////////////////////////////////////////////////////////////////////
     // Activity's LifeCycle
     //////////////////////////////////////////////////////////////////////////*/
+
+    @Override
+    protected void attachBaseContext(final Context newBase) {
+        // Make all text in the app a bit smaller
+        final Configuration config =
+                new Configuration(newBase.getResources().getConfiguration());
+        config.fontScale = config.fontScale * APP_FONT_SCALE;
+        super.attachBaseContext(newBase.createConfigurationContext(config));
+    }
 
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
@@ -1054,4 +1070,4 @@ public class MainActivity extends AppCompatActivity {
         dialog.getButton(AlertDialog.BUTTON_NEGATIVE)
                 .setOnClickListener(v -> ShareUtils.openUrlInBrowser(this, blogpostUrl));
     }
-}
+    }
