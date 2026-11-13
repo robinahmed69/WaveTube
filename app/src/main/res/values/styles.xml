@@ -19,6 +19,10 @@
         <item name="floatingActionButtonStyle">@style/FloatingActionButtonTheme</item>
         <item name="toolbarSearchColor">@color/white</item>
         <item name="colorControlActivated">?attr/colorPrimary</item>
+
+        <!-- Hind Siliguri font -->
+        <item name="android:fontFamily">@font/hind_siliguri</item>
+        <item name="fontFamily">@font/hind_siliguri</item>
     </style>
     <style name="Base" parent="Base.V21"/>
 
@@ -93,6 +97,8 @@
         <item name="colorAccent">@color/light_youtube_accent_color</item>
         <item name="android:windowBackground">@color/light_dialog_background_color</item>
         <item name="windowBackground">@color/light_dialog_background_color</item>
+        <item name="android:fontFamily">@font/hind_siliguri</item>
+        <item name="fontFamily">@font/hind_siliguri</item>
     </style>
 
     <style name="DarkDialogTheme" parent="Theme.AppCompat.DayNight.Dialog">
@@ -101,6 +107,8 @@
         <item name="colorAccent">@color/dark_youtube_accent_color</item>
         <item name="android:windowBackground">@color/dark_dialog_background_color</item>
         <item name="windowBackground">@color/dark_dialog_background_color</item>
+        <item name="android:fontFamily">@font/hind_siliguri</item>
+        <item name="fontFamily">@font/hind_siliguri</item>
     </style>
 
     <style name="LightDialogMinWidthTheme" parent="Theme.AppCompat.DayNight.Dialog.MinWidth">
@@ -109,6 +117,8 @@
         <item name="colorAccent">@color/light_youtube_accent_color</item>
         <item name="android:windowBackground">@color/light_dialog_background_color</item>
         <item name="windowBackground">@color/light_dialog_background_color</item>
+        <item name="android:fontFamily">@font/hind_siliguri</item>
+        <item name="fontFamily">@font/hind_siliguri</item>
     </style>
 
     <style name="DarkDialogMinWidthTheme" parent="Theme.AppCompat.DayNight.Dialog.MinWidth">
@@ -117,6 +127,8 @@
         <item name="colorAccent">@color/dark_youtube_accent_color</item>
         <item name="android:windowBackground">@color/dark_dialog_background_color</item>
         <item name="windowBackground">@color/dark_dialog_background_color</item>
+        <item name="android:fontFamily">@font/hind_siliguri</item>
+        <item name="fontFamily">@font/hind_siliguri</item>
     </style>
 
     <!-- Settings -->
