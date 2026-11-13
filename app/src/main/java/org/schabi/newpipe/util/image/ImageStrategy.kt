@@ -117,21 +117,11 @@ object ImageStrategy {
     }
 
     /**
-     * Chooses an image amongst the provided list based on the user preference previously set with
-     * [setPreferredImageQuality]. `null` will be returned in
+     * Chooses an image amongst the provided list. `null` will be returned in
      * case the list is empty or the user preference is to not show images.
      * <br>
-     * These properties will be preferred, from most to least important:
-     *
-     * 1. The image's [Image.estimatedResolutionLevel] is not unknown and is close to [preferredImageQuality]
-     * 2. At least one of the image's width or height are known
-     * 3. The highest resolution image is finally chosen if the user's preference is
-     * [PreferredImageQuality.HIGH], otherwise the chosen image is the one that has the height
-     * closest to [BEST_LOW_H] or [BEST_MEDIUM_H]
-     *
-     * <br>
-     * Use [imageListToDbUrl] if the URL is going to be saved to the database, to avoid
-     * saving nothing in case at the moment of saving the user preference is to not show images.
+     * WaveTube change: whenever images are enabled, the highest resolution image is always
+     * chosen (instead of the medium/low one), so that thumbnails look sharp in card view.
      *
      * @param images the images from which to choose
      * @return the chosen preferred image, or `null` if the list is empty or the user disabled
@@ -144,13 +134,12 @@ object ImageStrategy {
             return null // do not load images
         }
 
-        return choosePreferredImage(images, preferredImageQuality)
+        return choosePreferredImage(images, PreferredImageQuality.HIGH)
     }
 
     /**
-     * Like [choosePreferredImage], except that if [preferredImageQuality] is
-     * [PreferredImageQuality.NONE] an image will be chosen anyway (with preferred quality
-     * [PreferredImageQuality.MEDIUM].
+     * Like [choosePreferredImage], except that an image will be chosen even if images are
+     * disabled. WaveTube change: the highest resolution image is always chosen.
      * <br></br>
      * To go back to a list of images (obviously with just the one chosen image) from a URL saved in
      * the database use [dbUrlToImageList].
@@ -162,12 +151,7 @@ object ImageStrategy {
      */
     @JvmStatic
     fun imageListToDbUrl(images: List<Image>): String? {
-        val quality = when (preferredImageQuality) {
-            PreferredImageQuality.NONE -> PreferredImageQuality.MEDIUM
-            else -> preferredImageQuality
-        }
-
-        return choosePreferredImage(images, quality)
+        return choosePreferredImage(images, PreferredImageQuality.HIGH)
     }
 
     /**
