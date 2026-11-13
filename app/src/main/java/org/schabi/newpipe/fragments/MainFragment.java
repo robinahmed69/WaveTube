@@ -21,6 +21,8 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentStatePagerAdapterMenuWorkaround;
 import androidx.preference.PreferenceManager;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.viewpager.widget.ViewPager;
 
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.tabs.TabLayout;
@@ -57,6 +59,24 @@ public class MainFragment extends BaseFragment implements TabLayout.OnTabSelecte
     private boolean toolbarHidden = false;
     private int savedTopMargin = 0;
 
+    // pill bar hides when scrolling down and comes back when scrolling up
+    private boolean pillHidden = false;
+    private final RecyclerView.OnScrollListener pillScrollListener =
+            new RecyclerView.OnScrollListener() {
+                @Override
+                public void onScrolled(@NonNull final RecyclerView rv, final int dx,
+                                       final int dy) {
+                    final float threshold = 6 * getResources().getDisplayMetrics().density;
+                    if (!rv.canScrollVertically(-1)) {
+                        setPillHidden(false);
+                    } else if (dy > threshold) {
+                        setPillHidden(true);
+                    } else if (dy < -threshold) {
+                        setPillHidden(false);
+                    }
+                }
+            };
+
     // keeps the pill bar above the mini player
     private BottomSheetBehavior<View> sheetBehavior;
     private BottomSheetBehavior.BottomSheetCallback sheetCallback;
@@ -85,6 +105,18 @@ public class MainFragment extends BaseFragment implements TabLayout.OnTabSelecte
         prefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
         youtubeRestrictedModeEnabledKey = getString(R.string.youtube_restricted_mode_enabled);
         youtubeRestrictedModeEnabled = prefs.getBoolean(youtubeRestrictedModeEnabledKey, false);
+
+        // listen to scrolling of the lists inside the tabs
+        getChildFragmentManager().registerFragmentLifecycleCallbacks(
+                new FragmentManager.FragmentLifecycleCallbacks() {
+                    @Override
+                    public void onFragmentViewCreated(@NonNull final FragmentManager fm,
+                                                      @NonNull final Fragment f,
+                                                      @NonNull final View v,
+                                                      @Nullable final Bundle savedInstanceState) {
+                        attachScrollListeners(v);
+                    }
+                }, false);
     }
 
     @Override
@@ -105,6 +137,12 @@ public class MainFragment extends BaseFragment implements TabLayout.OnTabSelecte
 
         binding.mainMenuButton.setOnClickListener(v -> openDrawer());
         binding.mainSearchButton.setOnClickListener(v -> openSearch());
+        binding.pager.addOnPageChangeListener(new ViewPager.SimpleOnPageChangeListener() {
+            @Override
+            public void onPageSelected(final int position) {
+                setPillHidden(false);
+            }
+        });
 
         setupTabs();
     }
@@ -122,6 +160,8 @@ public class MainFragment extends BaseFragment implements TabLayout.OnTabSelecte
 
         hideToolbar();
         attachSheetCallback();
+        pillHidden = false;
+        updatePillPosition();
     }
 
     @Override
@@ -247,26 +287,73 @@ public class MainFragment extends BaseFragment implements TabLayout.OnTabSelecte
         sheetBehavior = null;
     }
 
+    private void attachScrollListeners(final View v) {
+        if (v instanceof RecyclerView) {
+            final RecyclerView rv = (RecyclerView) v;
+            rv.removeOnScrollListener(pillScrollListener);
+            rv.addOnScrollListener(pillScrollListener);
+        } else if (v instanceof ViewGroup) {
+            final ViewGroup group = (ViewGroup) v;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                attachScrollListeners(group.getChildAt(i));
+            }
+        }
+    }
+
     /**
-     * Keeps the pill bar just above the player: it follows the mini player while the
-     * video is swiped down or up, and returns to the bottom when the player is closed.
+     * Slides the pill bar out (scrolling down) or back in (scrolling up).
      */
-    private void updatePillPosition() {
-        if (binding == null || sheetBehavior == null) {
+    private void setPillHidden(final boolean hidden) {
+        if (binding == null || pillHidden == hidden) {
             return;
+        }
+        pillHidden = hidden;
+        binding.mainPillBar.animate()
+                .translationY(hidden ? hiddenTranslation() : liftTranslation())
+                .setDuration(180)
+                .start();
+    }
+
+    /**
+     * How far the pill bar must move down to be completely off the screen.
+     */
+    private float hiddenTranslation() {
+        final ViewGroup.MarginLayoutParams lp =
+                (ViewGroup.MarginLayoutParams) binding.mainPillBar.getLayoutParams();
+        final float extra = 16 * getResources().getDisplayMetrics().density;
+        return binding.mainPillBar.getHeight() + lp.bottomMargin + extra;
+    }
+
+    /**
+     * How far the pill bar must move up to stay above the mini player (0 if there is none).
+     */
+    private float liftTranslation() {
+        if (sheetBehavior == null) {
+            return 0f;
         }
         final View sheet = activity.findViewById(R.id.fragment_player_holder);
         final View holder = activity.findViewById(R.id.fragment_holder);
         if (sheet == null || holder == null) {
-            return;
+            return 0f;
         }
         if (sheetBehavior.getState() == BottomSheetBehavior.STATE_HIDDEN
                 || sheet.getHeight() == 0) {
-            binding.mainPillBar.setTranslationY(0f);
+            return 0f;
+        }
+        return -Math.max(0, holder.getBottom() - sheet.getTop());
+    }
+
+    /**
+     * Keeps the pill bar just above the player: it follows the mini player while the
+     * video is swiped down or up, and returns to the bottom when the player is closed.
+     * While the pill bar is hidden by scrolling, it stays hidden.
+     */
+    private void updatePillPosition() {
+        if (binding == null) {
             return;
         }
-        final float overlap = Math.max(0, holder.getBottom() - sheet.getTop());
-        binding.mainPillBar.setTranslationY(-overlap);
+        binding.mainPillBar.animate().cancel();
+        binding.mainPillBar.setTranslationY(pillHidden ? hiddenTranslation() : liftTranslation());
     }
 
     /*//////////////////////////////////////////////////////////////////////////
@@ -452,4 +539,4 @@ public class MainFragment extends BaseFragment implements TabLayout.OnTabSelecte
             return internalTabsList.equals(tabsToCompare);
         }
     }
-                                                }
+                        }
