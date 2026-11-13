@@ -10,6 +10,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.RelativeLayout;
 
 import androidx.annotation.NonNull;
@@ -325,6 +326,33 @@ public class MainFragment extends BaseFragment implements TabLayout.OnTabSelecte
                 final Tab tab = tabsList.get(i);
                 tabToSet.setIcon(tab.getTabIconRes(requireContext()));
                 tabToSet.setContentDescription(tab.getTabName(requireContext()));
+            }
+        }
+        shrinkTabIcons();
+    }
+
+    /**
+     * Makes the tab icons smaller (20dp) so they fit the thin pill bar.
+     */
+    private void shrinkTabIcons() {
+        if (binding == null || !(binding.mainTabLayout.getChildAt(0) instanceof ViewGroup)) {
+            return;
+        }
+        final int size = Math.round(20 * getResources().getDisplayMetrics().density);
+        final ViewGroup strip = (ViewGroup) binding.mainTabLayout.getChildAt(0);
+        for (int i = 0; i < strip.getChildCount(); i++) {
+            if (!(strip.getChildAt(i) instanceof ViewGroup)) {
+                continue;
+            }
+            final ViewGroup tabView = (ViewGroup) strip.getChildAt(i);
+            for (int j = 0; j < tabView.getChildCount(); j++) {
+                final View child = tabView.getChildAt(j);
+                if (child instanceof ImageView) {
+                    final ViewGroup.LayoutParams lp = child.getLayoutParams();
+                    lp.width = size;
+                    lp.height = size;
+                    child.setLayoutParams(lp);
+                }
             }
         }
     }
